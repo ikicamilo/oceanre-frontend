@@ -1,5 +1,5 @@
 import React, { useContext } from "react";
-import { BrowserRouter as Router } from "react-router-dom";
+import { BrowserRouter as Router, useNavigate } from "react-router-dom";
 import RoutesList from "./routes";
 import { AuthContext, AuthProvider } from "./context/AuthContext";
 import LoadingSpinner from "./components/common/LoadingSpinner";
@@ -7,6 +7,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 
 function AppContent() {
   const { user, logout, loading } = useContext(AuthContext);
+  const navigate = useNavigate();
 
   if (loading) return <LoadingSpinner />;
 
@@ -14,7 +15,13 @@ function AppContent() {
     <>
       <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
         <div className="container-fluid">
-          <span className="navbar-brand">OceanRe</span>
+          <span
+            className="navbar-brand"
+            style={{ cursor: "pointer" }}
+            onClick={() => navigate("/")}
+          >
+            OceanRe
+          </span>
 
           <button
             className="navbar-toggler"
