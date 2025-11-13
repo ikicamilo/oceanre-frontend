@@ -1,0 +1,53 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependency directories
+node_modules/
+
+# Production build output
+dist/
+dist-ssr/
+build/
+
+# Local environment files
+.env
+.env.*       # ignore all variants (.env.local, .env.development, etc)
+!.env.example  # allow example env file if you want to share structure
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+Thumbs.db
+
+# Test coverage
+coverage/
+*.lcov
+
+# Misc caches
+.cache/
+.tmp/
+.parcel-cache/
+vite.config.timestamp-*
+vite.config.ts.timestamp-*
+
+# OS junk
+ehthumbs.db
+Desktop.ini
+
+# Optional: Ignore lock files if you prefer clean installs in CI
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
