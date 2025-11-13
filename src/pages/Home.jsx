@@ -9,7 +9,7 @@ export default function Home() {
     <PageContainer title="Welcome to OceanRe System">
       <div className="card shadow p-4 border-0" style={{ maxWidth: "900px" }}>
         <h4 className="mb-3 text-primary">
-          Hello, {user?.name}!
+          Hello, {user?.name || user?.email}!
         </h4>
         <p>
           <strong>OceanRe</strong> is a full-stack accounting and sales
