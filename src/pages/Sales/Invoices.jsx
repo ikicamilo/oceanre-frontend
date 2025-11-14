@@ -3,6 +3,8 @@ import DataTable from "react-data-table-component";
 import { FaPlus, FaEdit, FaTrash } from "react-icons/fa";
 import * as invoicesApi from "../../api/invoices";
 import * as usersApi from "../../api/users";
+import * as customersApi from "../../api/customers";
+import * as periodsApi from "../../api/periods";
 import ModalForm from "../../components/common/ModalForm";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
 import Swal from "sweetalert2";
@@ -14,11 +16,14 @@ const MySwal = withReactContent(Swal);
 export default function Invoices() {
   const [invoices, setInvoices] = useState([]);
   const [users, setUsers] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [periods, setPeriods] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
 
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
+
   const [form, setForm] = useState({
     invoice_number: "",
     issue_date: "",
@@ -26,19 +31,33 @@ export default function Invoices() {
     customer_id: "",
     total_amount: "",
     currency: "USD",
-    status: "DRAFT",
+    status: "OPEN",
     period_id: "",
   });
 
   async function load() {
     setLoading(true);
     try {
-      const [invRes, usersRes] = await Promise.all([
+      const [invRes, usersRes, customersRes, periodsRes] = await Promise.all([
         invoicesApi.getInvoices(),
         usersApi.getUsers(),
+        customersApi.getCustomers(),
+        periodsApi.getPeriods(),
       ]);
-      setInvoices(invRes.data || []);
+
+      // Enrich invoices with customer_name
+      const invoicesWithNames =
+        invRes.data?.map((inv) => ({
+          ...inv,
+          customer_name:
+            customersRes.data.find((c) => c.id === inv.customer_id)?.name ||
+            "Unknown",
+        })) || [];
+
+      setInvoices(invoicesWithNames);
       setUsers(usersRes.data || []);
+      setCustomers(customersRes.data || []);
+      setPeriods(periodsRes.data || []);
     } catch (err) {
       MySwal.fire("Error", err.message, "error");
     } finally {
@@ -61,7 +80,7 @@ export default function Invoices() {
       customer_id: "",
       total_amount: "",
       currency: "USD",
-      status: "DRAFT",
+      status: "OPEN",
       period_id: "",
     });
     setShowModal(true);
@@ -69,14 +88,28 @@ export default function Invoices() {
 
   function openEdit(row) {
     setEditing(row.id);
-    setForm(row);
+    setForm({
+      invoice_number: row.invoice_number || "",
+      issue_date: row.issue_date?.substring(0, 10) || "",
+      due_date: row.due_date?.substring(0, 10) || "",
+      customer_id: row.customer_id || "",
+      total_amount: row.total_amount || "",
+      currency: row.currency || "USD",
+      status: row.status || "OPEN",
+      period_id: row.period_id || "",
+    });
     setShowModal(true);
   }
 
   async function save() {
     try {
+      if (!form.invoice_number) {
+        return MySwal.fire("Error", "Invoice number is required", "error");
+      }
+
       if (editing) await invoicesApi.updateInvoice(editing, form);
       else await invoicesApi.createInvoice(form);
+
       MySwal.fire("Saved!", "Invoice saved successfully", "success");
       setShowModal(false);
       load();
@@ -182,30 +215,44 @@ export default function Invoices() {
         onClose={() => setShowModal(false)}
         onSave={save}
       >
+        {/* Invoice Number */}
         <input
           className="form-control mb-2"
           placeholder="Invoice #"
           value={form.invoice_number}
           onChange={(e) => setForm({ ...form, invoice_number: e.target.value })}
         />
+
+        {/* Dates */}
         <input
           className="form-control mb-2"
           type="date"
           value={form.issue_date}
           onChange={(e) => setForm({ ...form, issue_date: e.target.value })}
         />
+
         <input
           className="form-control mb-2"
           type="date"
           value={form.due_date}
           onChange={(e) => setForm({ ...form, due_date: e.target.value })}
         />
-        <input
-          className="form-control mb-2"
-          placeholder="Customer ID"
+
+        {/* CUSTOMER DROPDOWN */}
+        <select
+          className="form-select mb-2"
           value={form.customer_id}
           onChange={(e) => setForm({ ...form, customer_id: e.target.value })}
-        />
+        >
+          <option value="">Select Customer</option>
+          {customers.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+
+        {/* Total */}
         <input
           className="form-control mb-2"
           placeholder="Total"
@@ -213,6 +260,20 @@ export default function Invoices() {
           value={form.total_amount}
           onChange={(e) => setForm({ ...form, total_amount: e.target.value })}
         />
+
+        {/* PERIOD DROPDOWN */}
+        <select
+          className="form-select mb-2"
+          value={form.period_id}
+          onChange={(e) => setForm({ ...form, period_id: e.target.value })}
+        >
+          <option value="">Select Period</option>
+          {periods.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.period_name}
+            </option>
+          ))}
+        </select>
       </ModalForm>
     </PageContainer>
   );

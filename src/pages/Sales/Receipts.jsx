@@ -4,6 +4,9 @@ import { FaPlus, FaEdit, FaTrash } from "react-icons/fa";
 import * as receiptsApi from "../../api/receipts";
 import * as usersApi from "../../api/users";
 import * as customersApi from "../../api/customers";
+import * as invoicesApi from "../../api/invoices";
+import * as periodsApi from "../../api/periods";
+
 import ModalForm from "../../components/common/ModalForm";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
 import Swal from "sweetalert2";
@@ -16,10 +19,13 @@ export default function Receipts() {
   const [receipts, setReceipts] = useState([]);
   const [users, setUsers] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [invoices, setInvoices] = useState([]);
+  const [periods, setPeriods] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
+
   const [form, setForm] = useState({
     receipt_number: "",
     payment_date: "",
@@ -29,19 +35,25 @@ export default function Receipts() {
     invoice_id: "",
     period_id: "",
   });
+
   const [search, setSearch] = useState("");
 
   async function load() {
     setLoading(true);
     try {
-      const [res, usersRes, custRes] = await Promise.all([
+      const [recRes, usersRes, custRes, invRes, perRes] = await Promise.all([
         receiptsApi.getReceipts(),
         usersApi.getUsers(),
         customersApi.getCustomers(),
+        invoicesApi.getInvoices(),
+        periodsApi.getPeriods(),
       ]);
-      setReceipts(res.data || []);
+
+      setReceipts(recRes.data || []);
       setUsers(usersRes.data || []);
       setCustomers(custRes.data || []);
+      setInvoices(invRes.data || []);
+      setPeriods(perRes.data || []);
     } catch (err) {
       MySwal.fire(
         "Error",
@@ -57,9 +69,10 @@ export default function Receipts() {
     load();
   }, []);
 
-  const userName = (id) => users.find((x) => x.id === id)?.name || id || "-";
-  const customerName = (id) =>
-    customers.find((x) => x.id === id)?.name || id || "-";
+  const userName = (id) => users.find((x) => x.id === id)?.name || "-";
+  const customerName = (id) => customers.find((x) => x.id === id)?.name || "-";
+  const invoiceNumber = (id) =>
+    invoices.find((x) => x.id === id)?.invoice_number || "-";
 
   function openNew() {
     setEditingId(null);
@@ -85,7 +98,8 @@ export default function Receipts() {
     try {
       if (editingId) await receiptsApi.updateReceipt(editingId, form);
       else await receiptsApi.createReceipt(form);
-      MySwal.fire("Saved", "Receipt saved", "success");
+
+      MySwal.fire("Saved", "Receipt saved successfully", "success");
       setShowModal(false);
       load();
     } catch (err) {
@@ -122,13 +136,27 @@ export default function Receipts() {
   const columns = [
     { name: "Receipt #", selector: (r) => r.receipt_number, sortable: true },
     { name: "Payment Date", selector: (r) => r.payment_date },
-    { name: "Amount", selector: (r) => r.amount, right: true },
+    { name: "Amount", selector: (r) => r.amount },
     { name: "Currency", selector: (r) => r.currency },
     {
       name: "Customer",
       selector: (r) => customerName(r.customer_id),
       sortable: true,
     },
+
+    // NEW COLUMN
+    {
+      name: "Invoice #",
+      selector: (r) => invoiceNumber(r.invoice_id),
+      sortable: true,
+    },
+
+    {
+      name: "Period",
+      selector: (r) =>
+        periods.find((p) => p.id === r.period_id)?.period_name || "-",
+    },
+
     { name: "Created By", selector: (r) => userName(r.created_by) },
     {
       name: "Created At",
@@ -141,6 +169,7 @@ export default function Receipts() {
       selector: (r) =>
         r.updated_at ? new Date(r.updated_at).toLocaleString() : "-",
     },
+
     {
       name: "Actions",
       cell: (row) => (
@@ -148,21 +177,18 @@ export default function Receipts() {
           <button
             className="btn btn-sm btn-outline-primary me-1"
             onClick={() => openEdit(row)}
-            title="Edit"
           >
             <FaEdit />
           </button>
+
           <button
             className="btn btn-sm btn-outline-danger"
             onClick={() => remove(row)}
-            title="Delete"
           >
             <FaTrash />
           </button>
         </>
       ),
-      ignoreRowClick: true,
-      allowOverflow: true,
     },
   ];
 
@@ -186,9 +212,8 @@ export default function Receipts() {
         columns={columns}
         data={filtered}
         pagination
-        highlightOnHover
-        responsive
         striped
+        highlightOnHover
         subHeader
         subHeaderAlign="right"
         subHeaderComponent={
@@ -202,6 +227,7 @@ export default function Receipts() {
         }
       />
 
+      {/* Modal */}
       <ModalForm
         show={showModal}
         title={editingId ? "Edit Receipt" : "New Receipt"}
@@ -214,12 +240,14 @@ export default function Receipts() {
           value={form.receipt_number}
           onChange={(e) => setForm({ ...form, receipt_number: e.target.value })}
         />
+
         <input
           className="form-control mb-2"
           type="date"
           value={form.payment_date}
           onChange={(e) => setForm({ ...form, payment_date: e.target.value })}
         />
+
         <input
           className="form-control mb-2"
           placeholder="Amount"
@@ -227,6 +255,8 @@ export default function Receipts() {
           value={form.amount}
           onChange={(e) => setForm({ ...form, amount: e.target.value })}
         />
+
+        {/* CUSTOMER */}
         <select
           className="form-select mb-2"
           value={form.customer_id}
@@ -236,6 +266,34 @@ export default function Receipts() {
           {customers.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
+            </option>
+          ))}
+        </select>
+
+        {/* INVOICE DROPDOWN (NEW) */}
+        <select
+          className="form-select mb-2"
+          value={form.invoice_id}
+          onChange={(e) => setForm({ ...form, invoice_id: e.target.value })}
+        >
+          <option value="">Select Invoice</option>
+          {invoices.map((inv) => (
+            <option key={inv.id} value={inv.id}>
+              {inv.invoice_number}
+            </option>
+          ))}
+        </select>
+
+        {/* PERIOD */}
+        <select
+          className="form-select mb-2"
+          value={form.period_id}
+          onChange={(e) => setForm({ ...form, period_id: e.target.value })}
+        >
+          <option value="">Select Period</option>
+          {periods.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.period_name}
             </option>
           ))}
         </select>

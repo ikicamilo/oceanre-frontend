@@ -18,12 +18,22 @@ export default function Accounts() {
 
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
+
   const [form, setForm] = useState({
     account_code: "",
     name: "",
     type: "",
     is_postable: true,
   });
+
+  const ACCOUNT_TYPES = [
+    "ASSET",
+    "LIABILITY",
+    "INCOME",
+    "EXPENSES",
+    "EQUITY",
+  ];
+
   const [search, setSearch] = useState("");
 
   async function load() {
@@ -36,11 +46,7 @@ export default function Accounts() {
       setAccounts(res.data || []);
       setUsers(usersRes.data || []);
     } catch (err) {
-      MySwal.fire(
-        "Error",
-        err?.response?.data?.message || err.message,
-        "error"
-      );
+      MySwal.fire("Error", err?.response?.data?.message || err.message, "error");
     } finally {
       setLoading(false);
     }
@@ -57,9 +63,15 @@ export default function Accounts() {
 
   function openNew() {
     setEditingId(null);
-    setForm({ account_code: "", name: "", type: "", is_postable: true });
+    setForm({
+      account_code: "",
+      name: "",
+      type: "",
+      is_postable: true,
+    });
     setShowModal(true);
   }
+
   function openEdit(row) {
     setEditingId(row.id);
     setForm(row);
@@ -68,17 +80,17 @@ export default function Accounts() {
 
   async function save() {
     try {
-      if (editingId) await accountsApi.updateAccount(editingId, form);
-      else await accountsApi.createAccount(form);
+      if (editingId) {
+        await accountsApi.updateAccount(editingId, form);
+      } else {
+        await accountsApi.createAccount(form);
+      }
+
       MySwal.fire("Saved", "Account saved", "success");
       setShowModal(false);
       load();
     } catch (err) {
-      MySwal.fire(
-        "Error",
-        err?.response?.data?.message || err.message,
-        "error"
-      );
+      MySwal.fire("Error", err?.response?.data?.message || err.message, "error");
     }
   }
 
@@ -94,11 +106,7 @@ export default function Accounts() {
           MySwal.fire("Deleted", "Account removed", "success");
           load();
         } catch (err) {
-          MySwal.fire(
-            "Error",
-            err?.response?.data?.message || err.message,
-            "error"
-          );
+          MySwal.fire("Error", err?.response?.data?.message || err.message, "error");
         }
       }
     });
@@ -109,29 +117,22 @@ export default function Accounts() {
     { name: "Name", selector: (r) => r.name, sortable: true },
     { name: "Type", selector: (r) => r.type },
     { name: "Postable", selector: (r) => (r.is_postable ? "Yes" : "No") },
-    // audit
-    {
-      name: "Created By",
-      selector: (r) => userName(r.created_by),
-      sortable: true,
-    },
+
+    { name: "Created By", selector: (r) => userName(r.created_by), sortable: true },
     {
       name: "Created At",
       selector: (r) =>
         r.created_at ? new Date(r.created_at).toLocaleString() : "-",
       sortable: true,
     },
-    {
-      name: "Updated By",
-      selector: (r) => userName(r.updated_by),
-      sortable: true,
-    },
+    { name: "Updated By", selector: (r) => userName(r.updated_by), sortable: true },
     {
       name: "Updated At",
       selector: (r) =>
         r.updated_at ? new Date(r.updated_at).toLocaleString() : "-",
       sortable: true,
     },
+
     {
       name: "Actions",
       cell: (row) => (
@@ -139,21 +140,17 @@ export default function Accounts() {
           <button
             className="btn btn-sm btn-outline-primary me-1"
             onClick={() => openEdit(row)}
-            title="Edit"
           >
             <FaEdit />
           </button>
           <button
             className="btn btn-sm btn-outline-danger"
             onClick={() => remove(row)}
-            title="Delete"
           >
             <FaTrash />
           </button>
         </>
       ),
-      ignoreRowClick: true,
-      allowOverflow: true,
     },
   ];
 
@@ -177,9 +174,8 @@ export default function Accounts() {
         columns={columns}
         data={filtered}
         pagination
-        highlightOnHover
-        responsive
         striped
+        highlightOnHover
         subHeader
         subHeaderAlign="right"
         subHeaderComponent={
@@ -205,18 +201,28 @@ export default function Accounts() {
           value={form.account_code}
           onChange={(e) => setForm({ ...form, account_code: e.target.value })}
         />
+
         <input
           className="form-control mb-2"
           placeholder="Name"
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
         />
-        <input
-          className="form-control mb-2"
-          placeholder="Type"
+
+        {/* NEW FIXED FIELD */}
+        <select
+          className="form-select mb-2"
           value={form.type}
           onChange={(e) => setForm({ ...form, type: e.target.value })}
-        />
+        >
+          <option value="">Select Type</option>
+          {ACCOUNT_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
+
         <div className="form-check mb-2">
           <input
             className="form-check-input"
